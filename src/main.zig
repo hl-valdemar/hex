@@ -1,7 +1,13 @@
 const std = @import("std");
-const pecs = @import("pine-ecs");
 
 const Editor = @import("hexlib").Editor;
+const log = @import("hexlib").log;
+const pecs = @import("pine-ecs");
+
+pub const std_options = std.Options{
+    .log_level = .err,
+    .logFn = log.logFn,
+};
 
 pub fn main() !void {
     var gpa = std.heap.DebugAllocator(.{}).init;
