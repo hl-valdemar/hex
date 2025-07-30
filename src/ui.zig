@@ -298,7 +298,7 @@ pub const Layout = struct {
     }
 
     pub fn draw(self: *const Layout, screen: *Screen) void {
-        // Draw all windows in z-order
+        // draw all windows in z-order
         for (self.windows.items) |node| {
             node.window.draw(screen);
         }

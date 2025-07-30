@@ -108,6 +108,20 @@ const StatusBar = struct {
         };
         screen.drawString(bounds.x + 1, bounds.y, mode_str, self.color);
 
+        // file name and modified indicator
+        const file_name = self.buffer.getDisplayName();
+        const modified_indicator = if (self.buffer.modified) " [+]" else "";
+
+        var file_buf: [128]u8 = undefined;
+        const file_str = std.fmt.bufPrint(&file_buf, " {s}{s}", .{ file_name, modified_indicator }) catch " [Error]";
+
+        const file_x = bounds.x + mode_str.len + 2;
+        if (file_x < bounds.x + bounds.width) {
+            const max_file_len = bounds.x + bounds.width - file_x - 15; // leave room for position
+            const file_len = @min(file_str.len, max_file_len);
+            screen.drawString(@as(u16, @intCast(file_x)), bounds.y, file_str[0..file_len], self.color);
+        }
+
         // position info
         var pos_buf: [32]u8 = undefined;
         const pos_str = std.fmt.bufPrint(&pos_buf, "{d}:{d}", .{
@@ -123,7 +137,7 @@ const StatusBar = struct {
 
         // message (if any)
         if (self.message) |msg| {
-            const msg_x = bounds.x + mode_str.len + 2;
+            const msg_x = bounds.x + mode_str.len + 2 + file_str.len + 2;
             const max_msg_len = if (pos_x > msg_x + 2) pos_x - msg_x - 2 else 0;
             if (max_msg_len > 0) {
                 const msg_len = @min(msg.len, max_msg_len);
@@ -276,6 +290,12 @@ pub const Editor = struct {
         self.term.deinit();
     }
 
+    /// Open a file from the command line arguments.
+    pub fn openFile(self: *Editor, path: []const u8) !void {
+        try self.buffers.items[self.current_buffer].loadFile(path);
+        self.message = "File loaded successfully";
+    }
+
     pub fn run(self: *Editor) !void {
         while (self.running) {
             try self.render();
@@ -383,11 +403,80 @@ pub const Editor = struct {
 
             // parse and execute command
             const trimmed = std.mem.trim(u8, command, " ");
-            if (std.mem.eql(u8, trimmed, "q") or std.mem.eql(u8, trimmed, "quit")) {
+
+            if (trimmed.len == 0) {
+                return;
+            }
+
+            // split command and arguments
+            var parts = std.mem.tokenizeScalar(u8, trimmed, ' ');
+            const cmd = parts.next() orelse return;
+
+            if (std.mem.eql(u8, cmd, "q") or std.mem.eql(u8, cmd, "quit")) {
+                // check if buffer is modified
+                if (self.buffers.items[self.current_buffer].modified) {
+                    self.message = "No write since last change (add ! to override)";
+                } else {
+                    self.running = false;
+                }
+            } else if (std.mem.eql(u8, cmd, "q!") or std.mem.eql(u8, cmd, "quit!")) {
                 self.running = false;
-            } else if (std.mem.eql(u8, trimmed, "w") or std.mem.eql(u8, trimmed, "write")) {
-                self.message = "Would save file (not implemented)";
-            } else if (trimmed.len > 0) {
+            } else if (std.mem.eql(u8, cmd, "w") or std.mem.eql(u8, cmd, "write")) {
+                if (parts.next()) |path| {
+                    // save as
+                    self.buffers.items[self.current_buffer].saveFileAs(path) catch |err| {
+                        self.message = switch (err) {
+                            error.AccessDenied => "Access denied",
+                            error.DiskQuota => "Disk quota exceeded",
+                            error.FileTooBig => "File too big",
+                            error.NoSpaceLeft => "No space left on device",
+                            else => "Failed to save file",
+                        };
+                        return;
+                    };
+                    self.message = "File saved";
+                } else {
+                    // save current file
+                    self.buffers.items[self.current_buffer].saveFile() catch |err| {
+                        if (err == error.NoFilePathSet) {
+                            self.message = "No file name";
+                        } else {
+                            self.message = "Failed to save file";
+                        }
+                        return;
+                    };
+                    self.message = "File saved";
+                }
+            } else if (std.mem.eql(u8, cmd, "wq")) {
+                // save and quit
+                self.buffers.items[self.current_buffer].saveFile() catch |err| {
+                    if (err == error.NoFilePathSet) {
+                        self.message = "No file name";
+                    } else {
+                        self.message = "Failed to save file";
+                    }
+                    return;
+                };
+                self.running = false;
+            } else if (std.mem.eql(u8, cmd, "e") or std.mem.eql(u8, cmd, "edit") or
+                std.mem.eql(u8, cmd, "o") or std.mem.eql(u8, cmd, "open"))
+            {
+                if (parts.next()) |path| {
+                    // open file
+                    self.buffers.items[self.current_buffer].loadFile(path) catch |err| {
+                        self.message = switch (err) {
+                            error.FileNotFound => "File not found",
+                            error.AccessDenied => "Access denied",
+                            error.IsDir => "Is a directory",
+                            else => "Failed to open file",
+                        };
+                        return;
+                    };
+                    self.message = "File loaded";
+                } else {
+                    self.message = "Usage: :e <filename>";
+                }
+            } else {
                 self.message = "Unknown command";
             }
         }
