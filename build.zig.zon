@@ -40,6 +40,10 @@
             .url = "git+https://github.com/hl-valdemar/pine-terminal#6ae53c571cf70dce9d5b7927c00a664eff6dabe1",
             .hash = "pine_terminal-0.0.0-engfSWiKAAASqprN0ZAXkjhbAaqErZiKJv8smLIXUVL0",
         },
+        .pine_ecs = .{
+            .url = "git+https://github.com/hl-valdemar/pine-ecs#293f6306b1093b7fa18ef170bb25c90410da9631",
+            .hash = "pine_ecs-0.4.0-4KYRKB5nAQBvpPPl75PYLe0I9kH50GmJnvYKSnonwCpf",
+        },
     },
     .paths = .{
         "build.zig",

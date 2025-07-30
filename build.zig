@@ -8,6 +8,10 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    const ecs_dep = b.dependency("pine_ecs", .{
+        .target = target,
+        .optimize = optimize,
+    });
 
     const lib_mod = b.createModule(.{
         .root_source_file = b.path("src/root.zig"),
@@ -16,6 +20,7 @@ pub fn build(b: *std.Build) void {
     });
 
     lib_mod.addImport("pine-terminal", term_dep.module("pine-terminal"));
+    lib_mod.addImport("pine-ecs", ecs_dep.module("pine-ecs"));
 
     const exe_mod = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
@@ -24,7 +29,7 @@ pub fn build(b: *std.Build) void {
     });
 
     exe_mod.addImport("pine-terminal", term_dep.module("pine-terminal"));
-    exe_mod.addImport("hex_lib", lib_mod);
+    exe_mod.addImport("hexlib", lib_mod);
 
     const lib = b.addLibrary(.{
         .linkage = .static,
