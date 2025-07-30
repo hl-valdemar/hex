@@ -5,7 +5,7 @@ const pecs = @import("pine-ecs");
 const pterm = @import("pine-terminal");
 
 const default = @import("default.zig");
-const log = @import("log.zig");
+const log = @import("../log.zig");
 const resource = @import("resource.zig");
 
 const Editor = @This();

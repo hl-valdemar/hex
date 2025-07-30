@@ -4,7 +4,7 @@ const Editor = @import("editor.zig");
 const resource = @import("resource.zig");
 const system = @import("system.zig");
 
-fn setPipeline(self: *Editor) !void {
+pub fn setPipeline(self: *Editor) !void {
     try self.addStage("startup", .{});
     try self.addStage("update", .{});
     try self.addStage("render", .{});
@@ -24,7 +24,7 @@ fn setPipeline(self: *Editor) !void {
     try render_stage.addSubstage("post", .{});
 }
 
-fn setResources(self: *Editor) !void {
+pub fn setResources(self: *Editor) !void {
     // register resources
     try self.registerResource(pterm.Terminal, .single);
     try self.registerResource(pterm.Screen, .single);
@@ -43,7 +43,7 @@ fn setResources(self: *Editor) !void {
     try self.pushResource(screen);
 }
 
-fn setSystems(self: *Editor) !void {
+pub fn setSystems(self: *Editor) !void {
     try self.addSystem("update.pre", system.PollInput);
     try self.addSystem("update.main", system.HandleInput);
     try self.addSystem("flush", system.ClearInput);
